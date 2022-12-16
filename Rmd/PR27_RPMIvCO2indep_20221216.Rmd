@@ -228,4 +228,50 @@ ggsave("../Results/AllStatSummary.png",width = 6.6,height=5)
 ```
 
 
+## Plot OD all stat_summary CO2
 
+```{r plot_all_stat_summary_CO2}
+
+ggplot(data=normalisedOD %>%
+                     filter(Media =="CO2"), 
+                      aes(x=Time, y=OD_corrected, color=Strain)) + 
+       geom_line(aes(group = Well), size = 0.2, alpha = 0.2) + 
+       stat_summary(fun = "median", geom = "line", size = 1) +
+       scale_y_continuous(limits=c(0,0.5),expand=c(0,0), breaks = c(0, 0.05, 0.1)) +
+   facet_wrap(Biorep ~ .)+
+       labs(x = "Number of Days",
+            y = "Absorbance (595nm)",
+            title = "CO2 Independent Media") +
+       theme_bw() +
+       theme(text = element_text(size = 15))+
+       theme(axis.title = element_text(size = 25)) +
+  theme(axis.ticks.length = unit(0.3, "cm"))+
+       theme(title = element_text(size = 30))+
+       theme(legend.title = element_text(size = 25))+
+  theme(panel.grid.minor = element_blank())+
+       scale_color_brewer(palette="Set1")
+```
+
+## Plot OD all stat_summary RPMI
+
+```{r plot_all_stat_summary_CO2}
+
+ggplot(data=normalisedOD %>%
+                     filter(Media =="R"), 
+                      aes(x=Time, y=OD_corrected, color=Strain)) + 
+       geom_line(aes(group = Well), size = 0.2, alpha = 0.2) + 
+       stat_summary(fun = "median", geom = "line", size = 1) +
+       scale_y_continuous(limits=c(0,0.1),expand=c(0,0), breaks = c(0, 0.05, 0.1)) +
+   facet_wrap(Biorep ~ .)+
+       labs(x = "Number of Days",
+            y = "Absorbance (595nm)",
+            title = "RPMI") +
+       theme_bw() +
+       theme(text = element_text(size = 15))+
+       theme(axis.title = element_text(size = 25)) +
+  theme(axis.ticks.length = unit(0.3, "cm"))+
+       theme(title = element_text(size = 30))+
+       theme(legend.title = element_text(size = 25))+
+  theme(panel.grid.minor = element_blank())+
+       scale_color_brewer(palette="Set1")
+```
