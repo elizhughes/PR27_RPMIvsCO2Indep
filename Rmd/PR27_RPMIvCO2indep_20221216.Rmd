@@ -1,7 +1,7 @@
 ---
 title: "PR27_RPMIvCO2Indep"
 author: "Liz Hughes"
-date: "2022-12-16"
+date: "2022_12_16"
 output: output:
   html_document:
     toc: yes
@@ -15,7 +15,7 @@ output: output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE , warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
@@ -28,12 +28,15 @@ Seed at OD 600nm = 0.2 , 200 ul per well.
 Run for 3 days (400 cycles).
 
 ```{r load_packages}
+
 library("reshape2")
 library(dplyr)
 library(ggplot2)
 library(tidyverse)
 library(markdown)
 library(cowplot)
+library(yaml)
+library(knitr)
 ```
 
 
@@ -42,7 +45,7 @@ library(cowplot)
 
 ```{r csv_file}
 
-rawdata <- read.csv("../Input/20200728_EH_PR2_RPMI_WT_Gat201TRSP.csv")
+rawdata <- read.csv("../Input/PR27_RPMIvCO2_TRSP.csv")
 
 ```
 
@@ -57,6 +60,7 @@ rawdata <- read.csv("../Input/20200728_EH_PR2_RPMI_WT_Gat201TRSP.csv")
 # Tidy the data using the melt function from reshape2 RPMI
 
 ```{r reshape}
+
 reshaped <- melt(rawdata_hrs, id=c("Time", "Temp"), 
                               variable.name="Well",
                               value.name="OD595")
@@ -68,7 +72,7 @@ summary(reshaped)
 
 ```{r Load_platemap}
 
-platemap <- read.csv("../Input/20200728-PR2_SetupCSV.csv")
+platemap <- read.csv("../Input/20221216_PR27_Setup.csv")
 head(platemap, n=10)
 
 
@@ -85,23 +89,40 @@ annotated <- inner_join(reshaped, platemap, by="Well")
 # How stable are ODs of blank wells, to use for normalisation? RPMI
 
 ```{r plot_blank_ODs}
-ggplot(data=filter(annotated,Strain==""), 
-       aes(x=Time, y=OD595, color=Strain, group = Well)) + 
+
+ggplot(data=filter(annotated,Strain==""),
+           aes(x=Time, y=OD595, color=Strain, group = Well)) + 
        geom_line() + 
-       facet_grid(Medium ~ .) +
+       facet_grid(Media ~ .) +
        labs(x="Time (hrs)", y="Absorbance at 595 nm")
 ```
-These are very stable, except H2. Remove from normalisation.
+
+
+```{r plot_individual_blank_wells}
+
+ggplot(data=filter(annotated,Well=="A2"), 
+       aes(x=Time, y=OD595, color=Strain, group = Well)) + 
+ 
+       geom_line() + 
+     theme_bw()+
+     labs(x="Time (hrs)", y="Absorbance at 595 nm")
+
+```
+
+
+These are very stable, except A1, A2 . Remove from normalisation.
 
 ## Calculate median OD for blank wells for each growth medium RPMI
 Remove well H2
 
 ```{r calc_blank_medians}
+
 blank_OD_summary <- annotated %>%
   filter(Strain=="") %>%
-  filter(Well != "H2") %>%
+  filter(Well != "A1") %>%
+  filter(Well != "A2") %>%
   # filter out columns 1 and 12 as well?
-  group_by(Medium) %>%
+  group_by(Media) %>%
   summarise(OD_median=median(OD595),
             OD_mean=mean(OD595),
             OD_max=max(OD595),
@@ -114,7 +135,7 @@ print(blank_OD_summary)
 ```{r subtract_blank_OD}
 
 normalisedOD <- annotated %>%
-  left_join(blank_OD_summary, by="Medium") %>%
+  left_join(blank_OD_summary, by="Media") %>%
   mutate(OD_corrected = OD595 - OD_median)
 
 ```
@@ -122,12 +143,13 @@ normalisedOD <- annotated %>%
 ## Plot OD all RPMI
 
 ```{r plot_all}
+
 ggplot(data=normalisedOD %>%
                       filter(Strain != ""), 
                       aes(x=Time, y=OD_corrected, color=Strain, group = Well)) + 
        geom_line() + 
-       scale_y_continuous(limits=c(0,0.1),expand=c(0,0))+
-       
+       scale_y_continuous(limits=c(0,0.5),expand=c(0,0))+
+       facet_wrap(Media ~ .)+
   
        labs(x = "Time(Hrs)",
             y = "Absorbance (595nm)") +
@@ -146,12 +168,12 @@ ggplot(data=normalisedOD %>%
                       aes(x=Time, y=OD_corrected, color=Strain)) + 
        #geom_line(aes(group = Well), size = 0.2, alpha = 0.2) + 
        stat_summary(fun = "median", geom = "line", size = 1) +
-       scale_y_continuous(limits=c(0,0.1),expand=c(0,0), breaks = c(0, 0.05, 0.1)) +
+       scale_y_continuous(limits=c(0,0.5),expand=c(0,0), breaks = c(0, 0.05, 0.1)) +
   
        labs(x = "Number of Days",
             y = "Absorbance (595nm)",
             title = "Cell Culture Media") +
-           
+           facet_wrap(Media ~ .)+
        theme_bw() +
        theme(text = element_text(size = 15))+
        theme(axis.title = element_text(size = 25))+
@@ -172,20 +194,21 @@ ggplot(data=normalisedOD %>%
 
 ```{r save_RMPI_PR_Gat201_poster.png}
 
-ggsave("../Results/RMPI_PR_Gat201_poster.png",width = 6.6,height=5)
+ggsave("../Results/AllSummary.png",width = 6.6,height=5)
 ```
 
 
 ## Plot OD all stat_summary(geom -"line") Highlight summary line RPMI
 
 ```{r plot_all_stat_summary}
+
 ggplot(data=normalisedOD %>%
                      filter(Strain != ""), 
                       aes(x=Time, y=OD_corrected, color=Strain)) + 
        geom_line(aes(group = Well), size = 0.2, alpha = 0.2) + 
        stat_summary(fun = "median", geom = "line", size = 1) +
-       scale_y_continuous(limits=c(0,0.1),expand=c(0,0), breaks = c(0, 0.05, 0.1)) +
-  
+       scale_y_continuous(limits=c(0,0.5),expand=c(0,0), breaks = c(0, 0.05, 0.1)) +
+   facet_wrap(Media ~ .)+
        labs(x = "Number of Days",
             y = "Absorbance (595nm)",
             title = "Cell Culture Media") +
@@ -201,7 +224,7 @@ ggplot(data=normalisedOD %>%
 
 ```{r save_RMPI_PR_Gat201_paper.png}
 
-ggsave("../Results/RMPI_PR_Gat201_paper.png",width = 6.6,height=5)
+ggsave("../Results/AllStatSummary.png",width = 6.6,height=5)
 ```
 
 
